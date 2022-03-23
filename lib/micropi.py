@@ -600,7 +600,7 @@ class OLED:
 
             # Load image based on OLED display height.  Note that image is converted to 1 bit color.
             #print(self.disp64.height)
-            self.image = Image.open("/home/pi/micropi/images/happycat_oled_64.ppm").convert("1")
+            self.image = Image.open("/home/pi/micropi/images/micropi_oled_64.ppm").convert("1")
                 
             # Display image.
             self.disp64.image(self.image)
