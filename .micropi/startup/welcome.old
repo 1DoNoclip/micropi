@@ -7,7 +7,7 @@ def main():
     buzzer =  Buzzer()
     led =  LED()
 
-    oled.stats()
+    oled.img()
 
     delay = 0.3
 
@@ -32,11 +32,9 @@ def main():
     led.set_color(3,0,0,0)
 
     led.set_color(0,0,128,128)
-    buzzer.play("g",1)
+    buzzer.play("g",delay)
     sleep(delay)
     led.set_color(0,0,0,0)
-
-    oled.img()
 
 if __name__ == "__main__":
     # execute only if run as a script

@@ -2,6 +2,5 @@ from micropi import OLED
 
 oled = OLED()
 
-oled.img()
-
+oled.print(1, "Hello World")
 
