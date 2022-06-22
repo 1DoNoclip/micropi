@@ -4,13 +4,13 @@ import RPi.GPIO as GPIO
 
 m1 = Motor("MOTOR1")
 m2 = Motor("MOTOR2")
-us = Sensor("ULTRASONIC", 10)
+distance = Sensor("ULTRASONIC", 10)
 
 while True:
     m1.forward(60)
     m2.forward(60)
-    us.sonicCheck()
-    if(us.Triggered):
+    distance.sonicCheck()
+    if(distance.Triggered):
         print("obtruction detected")
         m1.stop()
         m2.stop()
