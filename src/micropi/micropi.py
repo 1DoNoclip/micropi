@@ -4,7 +4,11 @@
 # Developed by: SB Components & Hypersmart Ltd
 # Project: MicroPi
 
-import RPi.GPIO as GPIO                     # RPi GPIO Library
+try:
+    import RPi.GPIO as GPIO
+except ModuleNotFoundError:
+    from unittest.mock import MagicMock
+    GPIO: MagicMock = MagicMock()
 from rpi_ws281x import PixelStrip, Color    # ws281x Library, may need to disable audio?
 #import Adafruit_SSD1306                     # Adafruit SSD1306 LCD Display
 from board import SCL, SDA
@@ -302,14 +306,14 @@ class Sensor:
 
 
 class Buzzer:
-    
+
     def __init__(self):
-        
+
         self.buzzerPIN = 16
         GPIO.setup(self.buzzerPIN, GPIO.OUT)
-        
+
     def play(self, tone, duration):
-        
+
     # see https://demos.ca/notefreqs (262 piano middle c)
 
         notes = ["a", 220, "a#", 233, "b", 247, "c", 262, "c#", 277, \
@@ -329,14 +333,14 @@ class Buzzer:
         buzzer.ChangeFrequency(self.note)
         time.sleep(duration)
         buzzer.stop()
-        
-        
+
+
 class IRDetect:
-    
+
     def __init__(self):
         self.irPIN = 20
         GPIO.setup(self.irPIN,GPIO.IN,GPIO.PUD_UP)
-        
+
     def exec_cmd(self, key_val):
         if(key_val==0x45):
             return("1")
@@ -372,7 +376,7 @@ class IRDetect:
             return("Right")
         elif(key_val==0x52):
             return("Down")
-    
+
     def read(self):
         if GPIO.input(self.irPIN) == 0:
             count = 0
@@ -404,10 +408,10 @@ class IRDetect:
                     cnt += 1
             if data[0]+data[1] == 0xFF and data[2]+data[3] == 0xFF:
                    # print("Get the key: 0x%02x" %data[2])
-                    
+
                     return self.exec_cmd(data[2])
-                            
-    
+
+
 class LED:
 
     def __init__(self):
@@ -449,7 +453,7 @@ class LED:
         b = values[self.get_bit_number(blue%256)]
         self.strip.setPixelColor(led %4, Color(r, g, b))
         self.strip.show()
-    
+
 
 class OLED:
 
@@ -461,25 +465,25 @@ class OLED:
         pass
 
     def stats(self):
-        
+
         self.disp32 = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
         # Clear display.
         self.disp32.fill(0)
         self.disp32.show()
-        
+
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp32.width
         height = self.disp32.height
         #print(self.disp32.height)
         self.image = Image.new("1", (width, height))
-        
+
         # Get drawing object to draw on image.
         self.draw = ImageDraw.Draw(self.image)
-        
+
         # Draw a black filled box to clear the image.
         self.draw.rectangle((0, 0, width, height), outline=0, fill=0)
-        
+
         # Draw some shapes.
         # First define some constants to allow easy resizing of shapes.
         padding = -2
@@ -487,7 +491,7 @@ class OLED:
         bottom = height - padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
-        
+
         # Load default font.
         font = ImageFont.load_default()
 
@@ -513,9 +517,9 @@ class OLED:
         #self.setline(2,MemUsage)
         Disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
         #self.setline(3,Disk)
-        
+
         IP = "IP:" + self.get_ip_address() # Keep checking for IP Address to appear
-            
+
         self.draw.text((x, top + 0), "IP: " + IP, font=font, fill=255)
         self.draw.text((x, top + 8), "CPU load: " + CPU, font=font, fill=255)
         self.draw.text((x, top + 16), MemUsage, font=font, fill=255)
@@ -525,7 +529,7 @@ class OLED:
         self.disp32.image(self.image)
         self.disp32.show()
         time.sleep(0.1)
-        
+
 
     def get_ip_address(self):
 
@@ -534,28 +538,28 @@ class OLED:
             cmd = "hostname -I"
             ip = subprocess.check_output(cmd, shell = True ).decode('ASCII')
         return ip
-    
+
     def print(self, line, str):
-        
+
         self.disp32 = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
         # Clear display.
         self.disp32.fill(0)
         self.disp32.show()
-        
-        
+
+
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp32.width
         height = self.disp32.height
         #print(self.disp32.height)
         self.image = Image.new("1", (width, height))
-        
+
         # Get drawing object to draw on image.
         self.draw = ImageDraw.Draw(self.image)
-        
+
         # Draw a black filled box to clear the image.
         self.draw.rectangle((0, 0, width, height), outline=0, fill=0)
-        
+
         # Draw some shapes.
         # First define some constants to allow easy resizing of shapes.
         padding = -2
@@ -563,7 +567,7 @@ class OLED:
         bottom = height - padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
-        
+
         # Load default font.
         font = ImageFont.load_default()
 
@@ -575,7 +579,7 @@ class OLED:
         # Draw a black filled box to clear the image.
         self.draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
-            
+
         if line == 1:
             self.draw.text((x, top + 0), str, font=font, fill=255)
         if line == 2:
@@ -584,15 +588,15 @@ class OLED:
             self.draw.text((x, top + 16), str, font=font, fill=255)
         if line == 4:
             self.draw.text((x, top + 25), str, font=font, fill=255)
-        
+
         self.disp32.image(self.image)
         self.disp32.show()
         time.sleep(0.1)
-             
-            
-            
+
+
+
     def img(self):
-            
+
             self.disp64 = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
             # Clear display.
             self.disp64.fill(0)
@@ -601,12 +605,12 @@ class OLED:
             # Load image based on OLED display height.  Note that image is converted to 1 bit color.
             #print(self.disp64.height)
             self.image = Image.open("/home/pi/micropi/images/micropi_oled_64.ppm").convert("1")
-                
+
             # Display image.
             self.disp64.image(self.image)
             self.disp64.show()
 
-            
+
     def __del__(self):
         # GPIO.cleanup()
         pass
