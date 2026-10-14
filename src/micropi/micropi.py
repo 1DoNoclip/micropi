@@ -1,26 +1,36 @@
-#!/usr/bin/python
-
 # Library for MicroPi V2.1
 # Developed by: SB Components & Hypersmart Ltd
 # Project: MicroPi
 
+import subprocess
+import time
+
+from PIL import Image, ImageDraw, ImageFont
+
 try:
-    import RPi.GPIO as GPIO
+    import adafruit_ssd1306  # type: ignore[reportMissingImports]
+    import busio  # type: ignore[reportMissingImports]
+    from board import SCL, SDA  # type: ignore[reportMissingImports]
+    from RPi import GPIO  # type: ignore[reportMissingImports]
+    from rpi_ws281x import Color, PixelStrip  # type: ignore[reportMissingImports]
+
+    i2c = busio.I2C(SCL, SDA)
+    IS_RPI = True
+
 except ModuleNotFoundError:
     from unittest.mock import MagicMock
-    GPIO: MagicMock = MagicMock()
-from rpi_ws281x import PixelStrip, Color    # ws281x Library, may need to disable audio?
-#import Adafruit_SSD1306                     # Adafruit SSD1306 LCD Display
-from board import SCL, SDA
-import busio
-import adafruit_ssd1306
-# Create the I2C interface.
-i2c = busio.I2C(SCL, SDA)
-from PIL import Image, ImageDraw, ImageFont # Pillow Image Library
-import subprocess
-import argparse
-import time
-from time import sleep
+    GPIO = MagicMock()
+
+    SCL = SDA = MagicMock()
+    i2c = MagicMock()
+    adafruit_ssd1306 = MagicMock()
+
+    PixelStrip = MagicMock()
+    Color = lambda r, g, b: (r, g, b)
+
+    IS_RPI = False
+    print("Not running on a Raspberry Pi. Peripherals have been mocked.")
+
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
