@@ -1,4 +1,4 @@
 import time
 import subprocess
 
-subprocess.run(['libcamera-hello'])
+subprocess.run(["libcamera-hello"])

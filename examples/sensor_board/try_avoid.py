@@ -10,7 +10,7 @@ while True:
     m1.forward(60)
     m2.forward(60)
     distance.sonicCheck()
-    if(distance.Triggered):
+    if distance.Triggered:
         print("obtruction detected")
         m1.stop()
         m2.stop()
@@ -23,5 +23,5 @@ while True:
         time.sleep(1)
         m1.forward(60)
         time.sleep(1)
-#Reset ports used by motor program back to input mode
+# Reset ports used by motor program back to input mode
 GPIO.cleanup()

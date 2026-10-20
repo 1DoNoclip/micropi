@@ -6,9 +6,8 @@ distance = Sensor("ULTRASONIC", 10)
 
 while True:
     distance.sonicCheck()
-    if(distance.Triggered):
+    if distance.Triggered:
         print("obtruction detected")
-        
-#Reset ports used by motor program back to input mode
+
+# Reset ports used by motor program back to input mode
 GPIO.cleanup()
-    

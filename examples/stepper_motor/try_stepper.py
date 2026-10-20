@@ -8,9 +8,9 @@ s1 = Stepper("STEPPER1")
 
 try:
     while True:
-        s1.forward(0.01, 90)   # Delay and Steps
-        #time.sleep(0.1)
-        #s1.backward(0.01, 90)
-        #time.sleep(0.1)
+        s1.forward(0.01, 90)  # Delay and Steps
+        # time.sleep(0.1)
+        # s1.backward(0.01, 90)
+        # time.sleep(0.1)
 except KeyboardInterrupt:
     GPIO.cleanup()

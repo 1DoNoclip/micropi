@@ -16,9 +16,5 @@ m2.reverse(50)
 sleep(3)
 m1.stop()
 m2.stop()
-#Reset ports used by motor program back to input mode
+# Reset ports used by motor program back to input mode
 # GPIO.cleanup()
-
-
-
-

@@ -4,6 +4,7 @@
 
 import subprocess
 import time
+from typing import Final, SupportsIndex
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -19,6 +20,7 @@ try:
 
 except ModuleNotFoundError:
     from unittest.mock import MagicMock
+
     GPIO = MagicMock()
 
     SCL = SDA = MagicMock()
@@ -35,8 +37,8 @@ except ModuleNotFoundError:
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
-class Motor:
 
+class Motor:
     # Class to handle interaction with the motor pins
     # Supports redefinition of "forward" and "backward" depending on how motors
     # are connected
@@ -47,34 +49,46 @@ class Motor:
     # identifying the pins to which the motor is connected.
     # config = int defines which pins control "forward" and "backward" movement
 
-    motorpins = {"MOTOR4": {"e": 12, "f": 8, "r": 7},
-                 "MOTOR3": {"e": 21, "f": 9, "r": 11},
-                 "MOTOR2": {"e": 25, "f": 24, "r": 23},
-                 "MOTOR1": {"e": 17, "f": 27, "r": 22}}
+    MOTOR_PINS: Final[dict[str, dict[str, int]]] = {
+        "MOTOR4": {"e": 12, "f": 8, "r": 7},
+        "MOTOR3": {"e": 21, "f": 9, "r": 11},
+        "MOTOR2": {"e": 25, "f": 24, "r": 23},
+        "MOTOR1": {"e": 17, "f": 27, "r": 22},
+    }
 
-    def __init__(self, motor):
+    test_mode: bool
+    pins: dict[str, int]
 
-        self.testMode = False
-        self.pins = self.motorpins[motor]
-        GPIO.setup(self.pins['e'], GPIO.OUT)
-        GPIO.setup(self.pins['f'], GPIO.OUT)
-        GPIO.setup(self.pins['r'], GPIO.OUT)
-        # 50 Hz frequency
-        self.PWM = GPIO.PWM(self.pins['e'], 50)
-        self.PWM.start(0)
-        GPIO.output(self.pins['e'], GPIO.HIGH)
-        GPIO.output(self.pins['f'], GPIO.LOW)
-        GPIO.output(self.pins['r'], GPIO.LOW)
+    def __init__(self, motor: str):
 
-    def test(self, state):
+        self.test_mode = False
+        self.pins = self.MOTOR_PINS[motor]
 
-        # Puts the motor into test mode
-        # When in test mode the Arrow associated with the motor
-        # receives power on "forward"
-        # rather than the motor. Useful when testing your code.
-        # Arguments:
-        # state = boolean
-        self.testMode = state
+        GPIO.setup(self.pins["e"], GPIO.OUT)
+        GPIO.setup(self.pins["f"], GPIO.OUT)
+        GPIO.setup(self.pins["r"], GPIO.OUT)
+
+        # 50 Hz frequency.
+        self.pwm = GPIO.PWM(self.pins["e"], 50)
+        self.pwm.start(0)
+
+        GPIO.output(self.pins["e"], GPIO.HIGH)
+        GPIO.output(self.pins["f"], GPIO.LOW)
+        GPIO.output(self.pins["r"], GPIO.LOW)
+
+    def test(self, state: bool):
+
+        """Puts the motor into and out of test mode.
+
+        When in test mode the Arrow associated with the motor
+        receives power on "forward" rather than the motor.
+        Useful when testing.
+
+        Args:
+            state: the new test state of the motor.
+        """
+
+        self.test_mode = state
 
     def forward(self, speed):
 
@@ -83,12 +97,12 @@ class Motor:
         # speed = Duty Cycle Percentage from 0 to 100.
         # 0 - stop and 100 - maximum speed
         print("Forward")
-        if self.testMode:
+        if self.test_mode:
             print("arrow")
         else:
-            self.PWM.ChangeDutyCycle(speed)
-            GPIO.output(self.pins['f'], GPIO.HIGH)
-            GPIO.output(self.pins['r'], GPIO.LOW)
+            self.pwm.ChangeDutyCycle(speed)
+            GPIO.output(self.pins["f"], GPIO.HIGH)
+            GPIO.output(self.pins["r"], GPIO.LOW)
 
     def reverse(self, speed):
 
@@ -97,20 +111,20 @@ class Motor:
         # speed = Duty Cycle Percentage from 0 to 100.
         # 0 - stop and 100 - maximum speed
         print("Reverse")
-        if self.testMode:
+        if self.test_mode:
             print("Arrow")
         else:
-            self.PWM.ChangeDutyCycle(speed)
-            GPIO.output(self.pins['f'], GPIO.LOW)
-            GPIO.output(self.pins['r'], GPIO.HIGH)
+            self.pwm.ChangeDutyCycle(speed)
+            GPIO.output(self.pins["f"], GPIO.LOW)
+            GPIO.output(self.pins["r"], GPIO.HIGH)
 
     def stop(self):
 
         # Stops power to the motor
         print("Stop")
-        self.PWM.ChangeDutyCycle(0)
-        GPIO.output(self.pins['f'], GPIO.LOW)
-        GPIO.output(self.pins['r'], GPIO.LOW)
+        self.pwm.ChangeDutyCycle(0)
+        GPIO.output(self.pins["f"], GPIO.LOW)
+        GPIO.output(self.pins["r"], GPIO.LOW)
 
     def speed(self):
 
@@ -119,15 +133,14 @@ class Motor:
 
 
 class LinkedMotors:
-
-        # Links 2 or more motors together as a set.
-        # This allows a single command to be used to control a
-        # linked set of motors
-        # e.g. For a 4x wheel vehicle this allows a single command
-        # to make all 4 wheels go forward.
-        # Starts the motor turning in its configured "forward" direction.
-        # Arguments:
-        # *motors = a list of Motor objects
+    # Links 2 or more motors together as a set.
+    # This allows a single command to be used to control a
+    # linked set of motors
+    # e.g. For a 4x wheel vehicle this allows a single command
+    # to make all 4 wheels go forward.
+    # Starts the motor turning in its configured "forward" direction.
+    # Arguments:
+    # *motors = a list of Motor objects
 
     def __init__(self, *motors):
 
@@ -165,17 +178,19 @@ class LinkedMotors:
 
 
 class Stepper:
-
     # Defines stepper motor pins on the MotorShield
     # Arguments:
     # motor = stepper motor
 
-    stepperpins = {"STEPPER1":{"en1": 21, "en2": 12, "c1": 9, "c2": 11, "c3": 8, "c4": 7},
-                   "STEPPER2":{"en1": 17, "en2": 25, "c1": 27, "c2": 22, "c3": 24, "c4": 23}}
+    STEPPER_PINS: Final[dict[str, dict[str, int]]] = {
+        "STEPPER1": {"en1": 21, "en2": 12, "c1": 9, "c2": 11, "c3": 8, "c4": 7},
+        "STEPPER2": {"en1": 17, "en2": 25, "c1": 27, "c2": 22, "c3": 24, "c4": 23},
+    }
 
+    config: dict[str, int]
 
-    def __init__(self, motor):
-        self.config = self.stepperpins[motor]
+    def __init__(self, motor: str):
+        self.config = self.STEPPER_PINS[motor]
         GPIO.setup(self.config["en1"], GPIO.OUT)
         GPIO.setup(self.config["en2"], GPIO.OUT)
         GPIO.setup(self.config["c1"], GPIO.OUT)
@@ -190,8 +205,7 @@ class Stepper:
         GPIO.output(self.config["c3"], GPIO.LOW)
         GPIO.output(self.config["c4"], GPIO.LOW)
 
-
-    def setStep(self, w1, w2, w3, w4):
+    def set_step(self, w1, w2, w3, w4):
 
         # Set steps of Stepper Motor
         # Arguments
@@ -202,21 +216,22 @@ class Stepper:
         GPIO.output(self.config["c3"], w3)
         GPIO.output(self.config["c4"], w4)
 
-    def forward(self, delay, steps):
+    def forward(self, delay: float, steps: SupportsIndex):
+        """
+        Rotate stepper motor in forward direction.
+        # Arguments
+        - `delay` - time between steps in miliseconds
+        - `steps` - number of steps to move by
+        """
 
-        # Rotate Stepper motor in forward direction
-        # delay = time between steps (milliseconds)
-        # Arguments: delay = time between steps in miliseconds
-        # steps = Number of Steps
-
-        for i in range(0, steps):
-            self.setStep(1, 0, 0, 0)
+        for i in range(steps):
+            self.set_step(1, 0, 0, 0)
             time.sleep(delay)
-            self.setStep(0, 1, 0, 0)
+            self.set_step(0, 1, 0, 0)
             time.sleep(delay)
-            self.setStep(0, 0, 1, 0)
+            self.set_step(0, 0, 1, 0)
             time.sleep(delay)
-            self.setStep(0, 0, 0, 1)
+            self.set_step(0, 0, 0, 1)
             time.sleep(delay)
 
     def backward(self, delay, steps):
@@ -227,13 +242,13 @@ class Stepper:
         # steps = Number of Steps
 
         for i in range(0, steps):
-            self.setStep(0, 0, 0, 1)
+            self.set_step(0, 0, 0, 1)
             time.sleep(delay)
-            self.setStep(0, 0, 1, 0)
+            self.set_step(0, 0, 1, 0)
             time.sleep(delay)
-            self.setStep(0, 1, 0, 0)
+            self.set_step(0, 1, 0, 0)
             time.sleep(delay)
-            self.setStep(1, 0, 0, 0)
+            self.set_step(1, 0, 0, 0)
             time.sleep(delay)
 
     def stop(self):
@@ -241,14 +256,13 @@ class Stepper:
         # Stops power to the motor
 
         print("Stop Stepper Motor")
-        GPIO.output(self.config['c1'], GPIO.LOW)
-        GPIO.output(self.config['c2'], GPIO.LOW)
-        GPIO.output(self.config['c3'], GPIO.LOW)
-        GPIO.output(self.config['c4'], GPIO.LOW)
+        GPIO.output(self.config["c1"], GPIO.LOW)
+        GPIO.output(self.config["c2"], GPIO.LOW)
+        GPIO.output(self.config["c3"], GPIO.LOW)
+        GPIO.output(self.config["c4"], GPIO.LOW)
 
 
 class Sensor:
-
     # Defines a sensor connected to the sensor pins on the MotorShield
     # Arguments:
     # sensortype = string identifying which sensor is being configured.
@@ -281,8 +295,8 @@ class Sensor:
             start = time.time()
         while GPIO.input(self.config["echo"]) == 1:
             stop = time.time()
-        elapsed = stop-start
-        measure = (elapsed * 34300)/2
+        elapsed = stop - start
+        measure = (elapsed * 34300) / 2
         self.lastRead = measure
         if self.boundary > measure:
             print("Boundary breached")
@@ -292,8 +306,11 @@ class Sensor:
         else:
             self.Triggered = False
 
-    sensorpins = {"IR1":{"echo":4,"check":iRCheck}, "IR2":{"echo":18, "check":iRCheck},
-                      "ULTRASONIC":{"trigger": 5, "echo": 6, "check":sonicCheck}}
+    sensorpins = {
+        "IR1": {"echo": 4, "check": iRCheck},
+        "IR2": {"echo": 18, "check": iRCheck},
+        "ULTRASONIC": {"trigger": 5, "echo": 6, "check": sonicCheck},
+    }
 
     def trigger(self):
 
@@ -316,7 +333,6 @@ class Sensor:
 
 
 class Buzzer:
-
     def __init__(self):
 
         self.buzzerPIN = 16
@@ -324,68 +340,113 @@ class Buzzer:
 
     def play(self, tone, duration):
 
-    # see https://demos.ca/notefreqs (262 piano middle c)
+        # see https://demos.ca/notefreqs (262 piano middle c)
 
-        notes = ["a", 220, "a#", 233, "b", 247, "c", 262, "c#", 277, \
-                "d", 294, "d#", 311, "e", 330, "f", 349, "f#", 370, "g", 392, \
-                "g#", 415,"A", 440, "A#", 466, "B", 494, "C", 523, "C#", 554, \
-                "D", 587, "D#", 622, "E", 659, "F", 698, "F#", 740, "G", 784, "G#", 831]
+        notes = [
+            "a",
+            220,
+            "a#",
+            233,
+            "b",
+            247,
+            "c",
+            262,
+            "c#",
+            277,
+            "d",
+            294,
+            "d#",
+            311,
+            "e",
+            330,
+            "f",
+            349,
+            "f#",
+            370,
+            "g",
+            392,
+            "g#",
+            415,
+            "A",
+            440,
+            "A#",
+            466,
+            "B",
+            494,
+            "C",
+            523,
+            "C#",
+            554,
+            "D",
+            587,
+            "D#",
+            622,
+            "E",
+            659,
+            "F",
+            698,
+            "F#",
+            740,
+            "G",
+            784,
+            "G#",
+            831,
+        ]
 
         if tone in notes:
             note_index = notes.index(tone)
         else:
             note_index = 0
         self.note = notes[note_index + 1]
-        #print(tone, note_index, self.note)
+        # print(tone, note_index, self.note)
 
-        buzzer = GPIO.PWM(self.buzzerPIN, 1000) # buzzer initialization to 1KHz
-        buzzer.start(10) # set duty cycle to 10
+        buzzer = GPIO.PWM(self.buzzerPIN, 1000)  # buzzer initialization to 1KHz
+        buzzer.start(10)  # set duty cycle to 10
         buzzer.ChangeFrequency(self.note)
         time.sleep(duration)
         buzzer.stop()
 
 
 class IRDetect:
-
     def __init__(self):
         self.irPIN = 20
-        GPIO.setup(self.irPIN,GPIO.IN,GPIO.PUD_UP)
+        GPIO.setup(self.irPIN, GPIO.IN, GPIO.PUD_UP)
 
     def exec_cmd(self, key_val):
-        if(key_val==0x45):
-            return("1")
-        elif(key_val==0x46):
-            return("2")
-        elif(key_val==0x47):
-            return("3")
-        elif(key_val==0x44):
-            return("4")
-        elif(key_val==0x40):
-            return("5")
-        elif(key_val==0x43):
-            return("6")
-        elif(key_val==0x07):
-            return("7")
-        elif(key_val==0x15):
-            return("8")
-        elif(key_val==0x09):
-            return("9")
-        elif(key_val==0x16):
-            return("*")
-        elif(key_val==0x19):
-            return("0")
-        elif(key_val==0x0d):
-            return("#")
-        elif(key_val==0x18):
-            return("Up")
-        elif(key_val==0x08):
-            return("Left")
-        elif(key_val==0x1c):
-            return("OK")
-        elif(key_val==0x5a):
-            return("Right")
-        elif(key_val==0x52):
-            return("Down")
+        if key_val == 0x45:
+            return "1"
+        elif key_val == 0x46:
+            return "2"
+        elif key_val == 0x47:
+            return "3"
+        elif key_val == 0x44:
+            return "4"
+        elif key_val == 0x40:
+            return "5"
+        elif key_val == 0x43:
+            return "6"
+        elif key_val == 0x07:
+            return "7"
+        elif key_val == 0x15:
+            return "8"
+        elif key_val == 0x09:
+            return "9"
+        elif key_val == 0x16:
+            return "*"
+        elif key_val == 0x19:
+            return "0"
+        elif key_val == 0x0D:
+            return "#"
+        elif key_val == 0x18:
+            return "Up"
+        elif key_val == 0x08:
+            return "Left"
+        elif key_val == 0x1C:
+            return "OK"
+        elif key_val == 0x5A:
+            return "Right"
+        elif key_val == 0x52:
+            return "Down"
 
     def read(self):
         if GPIO.input(self.irPIN) == 0:
@@ -399,8 +460,8 @@ class IRDetect:
                 time.sleep(0.00006)
             idx = 0
             cnt = 0
-            data = [0,0,0,0]
-            for i in range(0,32):
+            data = [0, 0, 0, 0]
+            for i in range(0, 32):
                 count = 0
                 while GPIO.input(self.irPIN) == 0 and count < 15:
                     count += 1
@@ -410,20 +471,19 @@ class IRDetect:
                     count += 1
                     time.sleep(0.00006)
                 if count > 8:
-                    data[idx] |= 1<<cnt
+                    data[idx] |= 1 << cnt
                 if cnt == 7:
                     cnt = 0
                     idx += 1
                 else:
                     cnt += 1
-            if data[0]+data[1] == 0xFF and data[2]+data[3] == 0xFF:
-                   # print("Get the key: 0x%02x" %data[2])
+            if data[0] + data[1] == 0xFF and data[2] + data[3] == 0xFF:
+                # print("Get the key: 0x%02x" %data[2])
 
-                    return self.exec_cmd(data[2])
+                return self.exec_cmd(data[2])
 
 
 class LED:
-
     def __init__(self):
 
         # LED Strip configuration:
@@ -442,36 +502,43 @@ class LED:
         # set to '1' for GPIOs 13. 19, 41, 45 or 53
         LED_CHANNEL = 0
         # Create NeoPixel object with appropriate configuration.
-        self.strip = PixelStrip(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
+        self.strip = PixelStrip(
+            LED_COUNT,
+            LED_PIN,
+            LED_FREQ_HZ,
+            LED_DMA,
+            LED_INVERT,
+            LED_BRIGHTNESS,
+            LED_CHANNEL,
+        )
         # Intialize the library (must be called once before other functions).
         self.strip.begin()
 
     def get_bit_number(self, value):
-        if value <=0:
+        if value <= 0:
             return 0
         power = 128
         bit = 7
         while value < power:
-           power = power // 2
-           bit = bit -1
+            power = power // 2
+            bit = bit - 1
         return bit
 
     def set_color(self, led, red, green, blue):
-        values = [0,5,25,45,65,85,105,125]
-        r = values[self.get_bit_number(red%256)]
-        g = values[self.get_bit_number(green%256)]
-        b = values[self.get_bit_number(blue%256)]
-        self.strip.setPixelColor(led %4, Color(r, g, b))
+        values = [0, 5, 25, 45, 65, 85, 105, 125]
+        r = values[self.get_bit_number(red % 256)]
+        g = values[self.get_bit_number(green % 256)]
+        b = values[self.get_bit_number(blue % 256)]
+        self.strip.setPixelColor(led % 4, Color(r, g, b))
         self.strip.show()
 
 
 class OLED:
-
     def __init__(self):
 
-        #self.disp32 = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
-        #self.disp64 = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
-        self.line = ["","","",""]
+        # self.disp32 = adafruit_ssd1306.SSD1306_I2C(128, 32, i2c)
+        # self.disp64 = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+        self.line = ["", "", "", ""]
         pass
 
     def stats(self):
@@ -485,7 +552,7 @@ class OLED:
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp32.width
         height = self.disp32.height
-        #print(self.disp32.height)
+        # print(self.disp32.height)
         self.image = Image.new("1", (width, height))
 
         # Get drawing object to draw on image.
@@ -517,18 +584,20 @@ class OLED:
         # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
         cmd = "hostname -I | cut -d' ' -f1"
         IP = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        #self.setline(0,IP)
+        # self.setline(0,IP)
         cmd = 'cut -f 1 -d " " /proc/loadavg'
         CPU = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
-        #self.setline(1,CPU)
+        cmd = (
+            "free -m | awk 'NR==2{printf \"Mem: %s/%s MB  %.2f%%\", $3,$2,$3*100/$2 }'"
+        )
+        # self.setline(1,CPU)
         MemUsage = subprocess.check_output(cmd, shell=True).decode("utf-8")
         cmd = 'df -h | awk \'$NF=="/"{printf "Disk: %d/%d GB  %s", $3,$2,$5}\''
-        #self.setline(2,MemUsage)
+        # self.setline(2,MemUsage)
         Disk = subprocess.check_output(cmd, shell=True).decode("utf-8")
-        #self.setline(3,Disk)
+        # self.setline(3,Disk)
 
-        IP = "IP:" + self.get_ip_address() # Keep checking for IP Address to appear
+        IP = "IP:" + self.get_ip_address()  # Keep checking for IP Address to appear
 
         self.draw.text((x, top + 0), "IP: " + IP, font=font, fill=255)
         self.draw.text((x, top + 8), "CPU load: " + CPU, font=font, fill=255)
@@ -540,13 +609,12 @@ class OLED:
         self.disp32.show()
         time.sleep(0.1)
 
-
     def get_ip_address(self):
 
         ip = "0.0.0.0"
         while len(ip) < 8:
             cmd = "hostname -I"
-            ip = subprocess.check_output(cmd, shell = True ).decode('ASCII')
+            ip = subprocess.check_output(cmd, shell=True).decode("ASCII")
         return ip
 
     def print(self, line, str):
@@ -556,12 +624,11 @@ class OLED:
         self.disp32.fill(0)
         self.disp32.show()
 
-
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp32.width
         height = self.disp32.height
-        #print(self.disp32.height)
+        # print(self.disp32.height)
         self.image = Image.new("1", (width, height))
 
         # Get drawing object to draw on image.
@@ -589,7 +656,6 @@ class OLED:
         # Draw a black filled box to clear the image.
         self.draw.rectangle((0, 0, width, height), outline=0, fill=0)
 
-
         if line == 1:
             self.draw.text((x, top + 0), str, font=font, fill=255)
         if line == 2:
@@ -603,23 +669,22 @@ class OLED:
         self.disp32.show()
         time.sleep(0.1)
 
-
-
     def img(self):
 
-            self.disp64 = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
-            # Clear display.
-            self.disp64.fill(0)
-            self.disp64.show()
+        self.disp64 = adafruit_ssd1306.SSD1306_I2C(128, 64, i2c)
+        # Clear display.
+        self.disp64.fill(0)
+        self.disp64.show()
 
-            # Load image based on OLED display height.  Note that image is converted to 1 bit color.
-            #print(self.disp64.height)
-            self.image = Image.open("/home/pi/micropi/images/micropi_oled_64.ppm").convert("1")
+        # Load image based on OLED display height.  Note that image is converted to 1 bit color.
+        # print(self.disp64.height)
+        self.image = Image.open("/home/pi/micropi/images/micropi_oled_64.ppm").convert(
+            "1"
+        )
 
-            # Display image.
-            self.disp64.image(self.image)
-            self.disp64.show()
-
+        # Display image.
+        self.disp64.image(self.image)
+        self.disp64.show()
 
     def __del__(self):
         # GPIO.cleanup()
@@ -627,7 +692,6 @@ class OLED:
 
 
 class Buttons:
-
     def __init__(self):
 
         # GPIO.setmode(GPIO.BCM)
@@ -650,7 +714,6 @@ class Buttons:
 
     def isPB2Pressed(self):
         return GPIO.input(self.pb2) == 0
-
 
     def __del__(self):
         # GPIO.cleanup()
